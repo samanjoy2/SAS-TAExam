@@ -1,0 +1,85 @@
+# Start everything:            docker compose up
+# Frontend:                    http://localhost:3000
+# Backend API:                 http://localhost:8080
+# Run all automated tests:     docker compose --profile test run --rm backend-tests
+#                              docker compose --profile test run --rm frontend-tests
+# Second backend (bonus test): docker compose --profile multi up   -> extra API on :8081
+
+x-backend-env: &backend-env
+  ConnectionStrings__Default: "Host=db;Port=5432;Database=${POSTGRES_DB:-admission};Username=${POSTGRES_USER:-admission};Password=${POSTGRES_PASSWORD:-admission}"
+  HOLD_DURATION_SECONDS: "${HOLD_DURATION_SECONDS:-600}"
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-admission}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-admission}
+      POSTGRES_DB: ${POSTGRES_DB:-admission}
+    command: ["postgres", "-c", "max_connections=200"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data # named volume: survives `docker compose down`
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      target: runtime
+    environment: *backend-env
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      target: runtime
+    environment:
+      API_BASE_URL: "${API_BASE_URL:-http://localhost:8080}"
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # ---- optional: a second backend process on another port sharing the same DB (bonus) ----
+  backend-2:
+    profiles: ["multi"]
+    build:
+      context: ./backend
+      target: runtime
+    environment: *backend-env
+    ports:
+      - "8081:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # ---- automated tests (not started by plain `docker compose up`) ----
+  backend-tests:
+    profiles: ["test"]
+    build:
+      context: ./backend
+      target: test
+    environment:
+      TEST_DB_CONNECTION_STRING: "Host=db;Port=5432;Database=admission_test;Username=${POSTGRES_USER:-admission};Password=${POSTGRES_PASSWORD:-admission}"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend-tests:
+    profiles: ["test"]
+    build:
+      context: ./frontend
+      target: test
+
+volumes:
+  pgdata:
