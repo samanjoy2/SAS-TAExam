@@ -20,6 +20,12 @@ builder.Services.AddSingleton(sp =>
 {
     var opts = sp.GetRequiredService<AdmissionOptions>();
     var dsb = new NpgsqlDataSourceBuilder(opts.ConnectionString);
+    // Keep each process well under Postgres' max_connections (100 by default) so that a burst of
+    // requests queues for a pooled connection instead of failing with "too many clients".
+    if (!opts.ConnectionString.Contains("pool size", StringComparison.OrdinalIgnoreCase))
+        dsb.ConnectionStringBuilder.MaxPoolSize = opts.MaxPoolSize;
+    if (!opts.ConnectionString.Contains("timeout", StringComparison.OrdinalIgnoreCase))
+        dsb.ConnectionStringBuilder.Timeout = 30;
     return dsb.Build();
 });
 builder.Services.AddSingleton<AdmissionService>();

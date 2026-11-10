@@ -10,6 +10,7 @@ public sealed class AdmissionOptions
     public required string ConnectionString { get; init; }
     public int HoldDurationSeconds { get; init; } = DefaultHoldDurationSeconds;
     public int ExpirySweepSeconds { get; init; } = 5;
+    public int MaxPoolSize { get; init; } = 30;
 
     public static AdmissionOptions FromConfiguration(IConfiguration config)
     {
@@ -21,8 +22,9 @@ public sealed class AdmissionOptions
 
         var hold = ParsePositive(config["HOLD_DURATION_SECONDS"], DefaultHoldDurationSeconds);
         var sweep = ParsePositive(config["EXPIRY_SWEEP_SECONDS"], 5);
+        var pool = ParsePositive(config["DB_MAX_POOL_SIZE"], 30);
 
-        return new AdmissionOptions { ConnectionString = cs, HoldDurationSeconds = hold, ExpirySweepSeconds = sweep };
+        return new AdmissionOptions { ConnectionString = cs, HoldDurationSeconds = hold, ExpirySweepSeconds = sweep, MaxPoolSize = pool };
     }
 
     private static int ParsePositive(string? raw, int fallback) =>
