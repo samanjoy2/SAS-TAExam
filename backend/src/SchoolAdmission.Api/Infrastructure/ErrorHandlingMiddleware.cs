@@ -25,9 +25,12 @@ public sealed class ErrorHandlingMiddleware(RequestDelegate next, ILogger<ErrorH
                 isJson ? ErrorCodes.InvalidJson : ErrorCodes.ValidationFailed,
                 isJson ? "Request body is not valid JSON or has fields of the wrong type." : ex.Message);
         }
-        catch (Exception ex) when ((ex is NpgsqlException or TimeoutException) && !context.RequestAborted.IsCancellationRequested)
+        // SocketException: while the DB container restarts, even resolving its hostname fails, and Npgsql
+        // lets that surface unwrapped. Found by restarting Postgres under load.
+        catch (Exception ex) when ((ex is NpgsqlException or TimeoutException or System.Net.Sockets.SocketException)
+                                   && !context.RequestAborted.IsCancellationRequested)
         {
-            logger.LogError(ex, "Database error");
+            logger.LogWarning("Database unavailable: {Type}: {Message}", ex.GetType().Name, ex.Message);
             await WriteAsync(context, StatusCodes.Status503ServiceUnavailable, ErrorCodes.DatabaseUnavailable,
                 "The database is temporarily unavailable. Please try again shortly.");
         }

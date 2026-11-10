@@ -1,3 +1,6 @@
+using System.Text.Json;
+using Microsoft.AspNetCore.Http.Json;
+using Microsoft.Extensions.Options;
 using SchoolAdmission.Api.Domain;
 
 namespace SchoolAdmission.Api;
@@ -7,8 +10,11 @@ public static class Endpoints
     public static void MapAdmissionEndpoints(this WebApplication app)
     {
         // 1. Create class (each shift is its own class)
-        app.MapPost("/classes", async (CreateClassRequest? body, AdmissionService svc, CancellationToken ct) =>
+        // The body is parsed by hand so a missing or non-JSON Content-Type still works (clients and test
+        // tools often omit it); minimal-API binding would otherwise skip the endpoint entirely.
+        app.MapPost("/classes", async (HttpRequest req, AdmissionService svc, CancellationToken ct) =>
         {
+            var body = await ReadJsonAsync<CreateClassRequest>(req, ct);
             var created = await svc.CreateClassAsync(body, ct);
             return Results.Created($"/classes/{created.Id}", created);
         });
@@ -54,5 +60,22 @@ public static class Endpoints
             var studentId = StudentId.Require(req);
             return Results.Ok(await svc.ListStudentHoldsAsync(studentId, ct));
         });
+    }
+
+    private static async Task<T?> ReadJsonAsync<T>(HttpRequest req, CancellationToken ct) where T : class
+    {
+        var json = req.HttpContext.RequestServices.GetRequiredService<IOptions<JsonOptions>>().Value.SerializerOptions;
+        using var reader = new StreamReader(req.Body);
+        var text = await reader.ReadToEndAsync(ct);
+        if (string.IsNullOrWhiteSpace(text))
+            throw ApiException.BadRequest(ErrorCodes.ValidationFailed, "Request body is required.");
+        try
+        {
+            return JsonSerializer.Deserialize<T>(text, json);
+        }
+        catch (JsonException)
+        {
+            throw ApiException.BadRequest(ErrorCodes.InvalidJson, "Request body is not valid JSON or has fields of the wrong type.");
+        }
     }
 }

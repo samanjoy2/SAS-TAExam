@@ -32,4 +32,5 @@ public static class ErrorCodes
     public const string DatabaseUnavailable = "DATABASE_UNAVAILABLE";
     public const string InternalError = "INTERNAL_ERROR";
     public const string NotFound = "NOT_FOUND";
+    public const string MethodNotAllowed = "METHOD_NOT_ALLOWED";
 }

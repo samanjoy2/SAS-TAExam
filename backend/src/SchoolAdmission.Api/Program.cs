@@ -43,14 +43,21 @@ var app = builder.Build();
 app.UseMiddleware<ErrorHandlingMiddleware>();
 app.UseCors();
 
+// Unknown routes (404) and wrong methods (405) get the same JSON error body as everything else.
+// (A MapFallback endpoint would also swallow method mismatches and turn them into a misleading 404.)
+app.Use(async (ctx, next) =>
+{
+    await next();
+    if (ctx.Response.HasStarted || ctx.Response.ContentLength is > 0 || ctx.Response.ContentType is not null) return;
+    if (ctx.Response.StatusCode == StatusCodes.Status404NotFound)
+        await ctx.Response.WriteAsJsonAsync(new ErrorResponse(ErrorCodes.NotFound, $"No endpoint for {ctx.Request.Method} {ctx.Request.Path}."));
+    else if (ctx.Response.StatusCode == StatusCodes.Status405MethodNotAllowed)
+        await ctx.Response.WriteAsJsonAsync(new ErrorResponse(ErrorCodes.MethodNotAllowed, $"{ctx.Request.Method} is not supported on {ctx.Request.Path}."));
+});
+
 app.MapAdmissionEndpoints();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
-
-// Unknown routes also get a JSON error body.
-app.MapFallback((HttpContext ctx) => Results.Json(
-    new ErrorResponse(ErrorCodes.NotFound, $"No endpoint for {ctx.Request.Method} {ctx.Request.Path}."),
-    statusCode: StatusCodes.Status404NotFound));
 
 app.Run();
 
