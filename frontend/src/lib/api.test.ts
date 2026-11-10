@@ -34,3 +34,15 @@ describe('api client error handling', () => {
     expect(err.message).toContain('সার্ভারে একটি অপ্রত্যাশিত সমস্যা')
   })
 })
+
+describe('polling', () => {
+  it('refetches immediately when the tab becomes visible again', async () => {
+    const { renderHook, waitFor } = await import('@testing-library/react')
+    const { usePolling } = await import('./hooks')
+    const fetcher = vi.fn().mockResolvedValue(1)
+    renderHook(() => usePolling(fetcher, 60_000, []))
+    await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1))
+    document.dispatchEvent(new Event('visibilitychange'))
+    await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2))
+  })
+})

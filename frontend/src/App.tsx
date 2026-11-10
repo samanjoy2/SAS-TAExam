@@ -70,12 +70,14 @@ export default function App() {
             </div>
             <div className="header-nav">
               <Nav />
-              <ThemeSwitch
-                theme={theme}
-                iconOnly
-                label={theme === 'light' ? 'ডার্ক মোড চালু করুন' : 'লাইট মোড চালু করুন'}
-                onThemeChange={(next) => setTheme(next)}
-              />
+              <span className="theme-slot">
+                <ThemeSwitch
+                  theme={theme}
+                  iconOnly
+                  label={theme === 'light' ? 'ডার্ক মোড চালু করুন' : 'লাইট মোড চালু করুন'}
+                  onThemeChange={(next) => setTheme(next)}
+                />
+              </span>
             </div>
           </div>
         </header>

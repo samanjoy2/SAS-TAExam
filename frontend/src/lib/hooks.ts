@@ -5,8 +5,16 @@ import { ApiError } from './api'
 export function useNow(intervalMs = 1000): number {
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), intervalMs)
-    return () => clearInterval(id)
+    const tick = () => setNow(Date.now())
+    const id = setInterval(tick, intervalMs)
+    // Background tabs throttle timers; catch up the moment the tab is shown again.
+    document.addEventListener('visibilitychange', tick)
+    window.addEventListener('focus', tick)
+    return () => {
+      clearInterval(id)
+      document.removeEventListener('visibilitychange', tick)
+      window.removeEventListener('focus', tick)
+    }
   }, [intervalMs])
   return now
 }
@@ -60,8 +68,14 @@ export function usePolling<T>(fetcher: () => Promise<T>, intervalMs: number, dep
     setLoading(true)
     void run()
     const id = setInterval(() => void run(), intervalMs)
+    // Refetch right away when a backgrounded tab comes back (its interval may have been throttled).
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void run()
+    }
+    document.addEventListener('visibilitychange', onVisible)
     return () => {
       clearInterval(id)
+      document.removeEventListener('visibilitychange', onVisible)
       generation.current++
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

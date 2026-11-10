@@ -274,8 +274,16 @@ main { max-width: var(--page-max); margin: 0 auto; padding: 24px 16px 96px; }
   .summary-item { font-size: 1.25rem; padding: 10px 12px; }
 }
 @media (max-width: 520px) {
+  /* Phone: theme button joins the brand row; tabs get the full second row and scroll if needed. */
+  .app-header-inner { position: relative; }
+  .theme-slot { position: absolute; top: 10px; right: 16px; }
+  .header-nav { width: 100%; min-width: 0; }
+  .header-nav > :first-child { flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; }
   .stats { grid-template-columns: repeat(2, 1fr); }
   .class-grid { grid-template-columns: 1fr; }
-  .summary { grid-template-columns: 1fr; }
-  .header-nav { width: 100%; justify-content: space-between; }
+  .summary { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .summary-item { font-size: 1.1rem; padding: 8px 10px; }
+  .summary-label { font-size: 0.68rem; line-height: 1.25; }
+  h2 { font-size: 1.35rem; }
+  main { padding-top: 16px; }
 }
