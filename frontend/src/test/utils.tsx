@@ -2,6 +2,7 @@ import type { ReactElement } from 'react'
 import { render } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { StudentProvider } from '../lib/student'
+import { ToastStackProvider } from '../components/arc/toast-stack/toast-stack'
 
 export const STUDENT = '20152691234567890'
 
@@ -9,7 +10,9 @@ export function renderWithProviders(ui: ReactElement, { route = '/', studentId =
   if (studentId) localStorage.setItem('admission.studentId', studentId)
   return render(
     <MemoryRouter initialEntries={[route]} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <StudentProvider>{ui}</StudentProvider>
+      <ToastStackProvider>
+        <StudentProvider>{ui}</StudentProvider>
+      </ToastStackProvider>
     </MemoryRouter>,
   )
 }

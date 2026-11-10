@@ -23,7 +23,7 @@ describe('HoldCard', () => {
     )
 
     expect(screen.getByTestId('hold-status')).toHaveTextContent('HELD')
-    expect(screen.getByTestId('countdown')).toHaveTextContent('00:05')
+    expect(screen.getByTestId('countdown')).toHaveAttribute('data-seconds-left', '5')
     expect(screen.getByRole('button', { name: 'ভর্তি ফি দিন' })).toBeEnabled()
 
     act(() => {
@@ -32,7 +32,8 @@ describe('HoldCard', () => {
 
     expect(screen.getByTestId('hold-status')).toHaveTextContent('EXPIRED')
     expect(screen.getByRole('button', { name: 'ভর্তি ফি দিন' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'বাতিল' })).toBeDisabled()
+    expect(screen.queryByTestId('countdown')).toBeNull()
+    expect(screen.getByRole('button', { name: /বাতিল/ })).toBeDisabled()
     expect(onChanged).toHaveBeenCalled() // parent is told to refetch
   })
 

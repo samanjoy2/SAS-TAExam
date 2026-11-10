@@ -24,10 +24,10 @@ describe('ClassesPage', () => {
     renderWithProviders(<ClassesPage />)
 
     const row = await screen.findByTestId('class-row-c_1')
-    expect(within(row).getByText('25')).toBeInTheDocument()
+    expect(within(row).getAllByText('25').length).toBeGreaterThan(0)
 
     available = 24
-    await waitFor(() => expect(within(screen.getByTestId('class-row-c_1')).getByText('24')).toBeInTheDocument(), {
+    await waitFor(() => expect(within(screen.getByTestId('class-row-c_1')).getAllByText('24').length).toBeGreaterThan(0), {
       timeout: 5000,
     })
   })
