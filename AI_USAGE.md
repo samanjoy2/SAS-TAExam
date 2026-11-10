@@ -51,7 +51,7 @@
    - *Fix:* stretch the container and cap its width.
 
 4. **English strings leaking into a Bengali UI.**
-   - *Mistake:* vendored components had hard-coded English ("Minutes", "used", "Almost full"), and the countdown's
+   - *Mistake:* vendored components had hard-coded English ("Minutes", "Completed", "Step 1 of 3"; an early usage-meter version also said "used" and "Almost full"), and the countdown's
      screen-reader text added an English plural `s`.
    - *How it was caught:* visual review in the browser and reading the component source.
    - *Fix:* localize the strings in the vendored source.

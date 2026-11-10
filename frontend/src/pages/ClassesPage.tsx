@@ -5,14 +5,29 @@ import { effectiveStatus } from '../lib/holds'
 import { useNow, usePolling } from '../lib/hooks'
 import { useStudent } from '../lib/student'
 import { Alert, StaleNotice } from '../components/Alert'
+import { SeatBar } from '../components/SeatBar'
 import { AnimatedCounter } from '../components/arc/animated-counter/animated-counter'
 import { Badge } from '../components/arc/badge/badge'
 import { Button } from '../components/arc/button/button'
 import { EmptyState } from '../components/arc/empty-state/empty-state'
 import { Skeleton } from '../components/arc/skeleton/skeleton'
-import { UsageMeter } from '../components/arc/usage-meter/usage-meter'
 
 export const CLASS_REFRESH_MS = 3000
+
+function availability(c: ClassSummary) {
+  if (c.availableSeats === 0) return <Badge tone="danger" pill>পূর্ণ</Badge>
+  if (c.availableSeats <= Math.max(3, Math.ceil(c.totalSeats * 0.1)))
+    return (
+      <Badge tone="warning" dot pill>
+        অল্প আসন বাকি
+      </Badge>
+    )
+  return (
+    <Badge tone="success" dot pill>
+      আসন খালি আছে
+    </Badge>
+  )
+}
 
 /** Class list with live seat counts (auto-refreshed) and an "আবেদন করুন" button per class. */
 export function ClassesPage() {
@@ -34,10 +49,20 @@ export function ClassesPage() {
     return map
   }, [mine.data, now])
 
+  const totals = useMemo(() => {
+    const list = classes.data ?? []
+    return {
+      classes: list.length,
+      free: list.reduce((n, c) => n + c.availableSeats, 0),
+      pending: [...activeByClass.values()].filter((h) => h.status === 'HELD').length,
+    }
+  }, [classes.data, activeByClass])
+
   const apply = async (c: ClassSummary) => {
     setError('')
     if (!studentId) {
       setError('আবেদন করার আগে উপরে শিক্ষার্থীর ১৭ অঙ্কের জন্মনিবন্ধন নম্বর দিন।')
+      document.getElementById('student-id')?.focus()
       return
     }
     setApplying(c.id)
@@ -58,14 +83,29 @@ export function ClassesPage() {
       <div className="page-head">
         <div>
           <h2>ক্লাস তালিকা</h2>
-          <p className="muted">
-            "আগে আবেদন করলে আগে পাবে" — আসনের হিসাব প্রতি {CLASS_REFRESH_MS / 1000} সেকেন্ডে নিজে থেকেই হালনাগাদ হয়।
-          </p>
+          <p className="muted">প্রতিটি শিফট আলাদা ক্লাস। আসনের হিসাব প্রতি {CLASS_REFRESH_MS / 1000} সেকেন্ডে নিজে থেকেই হালনাগাদ হয়।</p>
         </div>
-        <Badge tone="info" dot pill>
-          লাইভ
-        </Badge>
+        <span className="live-pill" title="স্বয়ংক্রিয় হালনাগাদ চালু">
+          <span className="live-dot" aria-hidden="true" /> লাইভ
+        </span>
       </div>
+
+      {classes.data && classes.data.length > 0 && (
+        <div className="summary">
+          <div className="summary-item">
+            <span className="summary-label">মোট ক্লাস</span>
+            <AnimatedCounter value={totals.classes} />
+          </div>
+          <div className="summary-item">
+            <span className="summary-label">সব ক্লাসে খালি আসন</span>
+            <AnimatedCounter value={totals.free} />
+          </div>
+          <div className="summary-item">
+            <span className="summary-label">ফি বাকি আছে এমন আবেদন</span>
+            {studentId ? <AnimatedCounter value={totals.pending} /> : <span className="summary-na">—</span>}
+          </div>
+        </div>
+      )}
 
       <Alert kind="error" title="আবেদন করা যায়নি">
         {error}
@@ -103,32 +143,32 @@ export function ClassesPage() {
             const active = activeByClass.get(c.id)
             const full = c.availableSeats === 0
             return (
-              <article key={c.id} className="class-card" data-testid={`class-row-${c.id}`}>
+              <article
+                key={c.id}
+                className={`class-card${active ? ' has-application' : ''}${full ? ' is-full' : ''}`}
+                data-testid={`class-row-${c.id}`}
+              >
                 <header className="class-card-head">
                   <h3>{c.name}</h3>
-                  {full ? (
-                    <Badge tone="danger" pill>
-                      পূর্ণ
-                    </Badge>
-                  ) : (
-                    <Badge tone="success" pill>
-                      আসন খালি আছে
-                    </Badge>
-                  )}
+                  {availability(c)}
                 </header>
 
                 <div className="stats">
                   <div className="stat">
-                    <span className="stat-label">মোট</span>
+                    <span className="stat-label">মোট আসন</span>
                     <AnimatedCounter value={c.totalSeats} />
                   </div>
-                  <div className="stat">
-                    <span className="stat-label">Hold</span>
-                    <AnimatedCounter value={c.heldSeats} />
-                  </div>
-                  <div className="stat">
-                    <span className="stat-label">নিশ্চিত</span>
+                  <div className="stat stat-confirmed">
+                    <span className="stat-label">
+                      <i aria-hidden="true" /> নিশ্চিত
+                    </span>
                     <AnimatedCounter value={c.confirmedSeats} />
+                  </div>
+                  <div className="stat stat-held">
+                    <span className="stat-label">
+                      <i aria-hidden="true" /> Hold
+                    </span>
+                    <AnimatedCounter value={c.heldSeats} />
                   </div>
                   <div className={full ? 'stat stat-full' : 'stat stat-free'}>
                     <span className="stat-label">খালি</span>
@@ -136,23 +176,15 @@ export function ClassesPage() {
                   </div>
                 </div>
 
-                <UsageMeter
-                  label="আসনের অবস্থা"
-                  limit={c.totalSeats}
-                  decimals={0}
-                  unit=" আসন"
-                  freeLabel="খালি"
-                  overLabel="পূর্ণ"
-                  segments={[
-                    { id: 'confirmed', label: 'নিশ্চিত', value: c.confirmedSeats },
-                    { id: 'held', label: 'Hold', value: c.heldSeats },
-                  ]}
-                />
+                <SeatBar total={c.totalSeats} confirmed={c.confirmedSeats} held={c.heldSeats} />
 
-                <div className="class-card-foot">
+                <footer className="class-card-foot">
+                  <span className="muted">
+                    {full ? 'এই মুহূর্তে কোনো আসন খালি নেই' : `${c.availableSeats}টি আসন এখনও খালি`}
+                  </span>
                   {active ? (
                     <Link to={`/holds/${encodeURIComponent(active.holdId)}`} className="link-button">
-                      {active.status === 'CONFIRMED' ? 'ভর্তি নিশ্চিত — দেখুন' : 'আপনার আবেদন দেখুন →'}
+                      {active.status === 'CONFIRMED' ? '✓ ভর্তি নিশ্চিত' : 'আপনার আবেদন →'}
                     </Link>
                   ) : (
                     <Button
@@ -165,7 +197,7 @@ export function ClassesPage() {
                       আবেদন করুন
                     </Button>
                   )}
-                </div>
+                </footer>
               </article>
             )
           })}

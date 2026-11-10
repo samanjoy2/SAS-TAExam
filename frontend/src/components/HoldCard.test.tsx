@@ -53,7 +53,7 @@ describe('HoldCard', () => {
     expect(screen.getByText(/অন্য শিক্ষার্থীর/)).toBeInTheDocument()
   })
 
-  it('shows confirmed applications with pay disabled', () => {
+  it('shows confirmed applications without pay/cancel actions', () => {
     renderWithProviders(
       <HoldCard
         hold={{
@@ -66,6 +66,6 @@ describe('HoldCard', () => {
       />,
     )
     expect(screen.getByTestId('hold-status')).toHaveTextContent('CONFIRMED')
-    expect(screen.getByRole('button', { name: 'ভর্তি ফি দিন' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'ভর্তি ফি দিন' })).toBeNull()
   })
 })

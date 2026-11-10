@@ -6,8 +6,10 @@ import { AdminPage } from './pages/AdminPage'
 import { HoldPage } from './pages/HoldPage'
 import { MyHoldsPage } from './pages/MyHoldsPage'
 import { StudentProvider } from './lib/student'
+import { useTheme } from './lib/theme'
 import { Alert } from './components/Alert'
 import { Tabs, TabsList, TabsTrigger } from './components/arc/tabs/tabs'
+import { ThemeSwitch } from './components/arc/theme-switch/theme-switch'
 import { ToastStack, ToastStackProvider } from './components/arc/toast-stack/toast-stack'
 
 /** Last line of defence: a rendering bug shows a message instead of a blank page. */
@@ -51,6 +53,7 @@ function Nav() {
 }
 
 export default function App() {
+  const { theme, setTheme } = useTheme()
   return (
     <ToastStackProvider duration={4500}>
       <StudentProvider>
@@ -62,13 +65,23 @@ export default function App() {
               </span>
               <div>
                 <h1>স্কুল ভর্তি সিস্টেম</h1>
-                <p className="muted">অনলাইন ভর্তি — আগে আবেদন করলে আগে পাবে</p>
+                <p className="muted">আগে আবেদন করলে আগে পাবে</p>
               </div>
             </div>
-            <StudentBar />
-            <Nav />
+            <div className="header-nav">
+              <Nav />
+              <ThemeSwitch
+                theme={theme}
+                iconOnly
+                label={theme === 'light' ? 'ডার্ক মোড চালু করুন' : 'লাইট মোড চালু করুন'}
+                onThemeChange={(next) => setTheme(next)}
+              />
+            </div>
           </div>
         </header>
+        <div className="student-strip">
+          <StudentBar />
+        </div>
         <main>
           <ErrorBoundary>
             <Routes>

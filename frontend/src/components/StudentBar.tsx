@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Input } from './arc/input/input'
 import { Badge } from './arc/badge/badge'
 import { isValidStudentId, useStudent } from '../lib/student'
@@ -25,7 +26,7 @@ export function StudentBar() {
         <Input
           id="student-id"
           label="শিক্ষার্থীর জন্মনিবন্ধন নম্বর (১৭ অঙ্ক)"
-          description={error ? undefined : studentId ? undefined : 'আবেদন করতে ও নিজের আবেদন দেখতে নম্বরটি দিন।'}
+          description={error || studentId ? undefined : 'আবেদন করতে ও নিজের আবেদন দেখতে নম্বরটি দিন।'}
           error={error || undefined}
           inputMode="numeric"
           autoComplete="off"
@@ -36,9 +37,14 @@ export function StudentBar() {
         />
       </div>
       {studentId && (
-        <Badge tone="success" dot pill data-testid="active-student">
-          সক্রিয় শিক্ষার্থী: {studentId}
-        </Badge>
+        <div className="student-status">
+          <Badge tone="success" dot pill data-testid="active-student">
+            সক্রিয় শিক্ষার্থী: {studentId}
+          </Badge>
+          <Link to="/me" className="subtle-link">
+            আমার আবেদন দেখুন →
+          </Link>
+        </div>
       )}
     </div>
   )

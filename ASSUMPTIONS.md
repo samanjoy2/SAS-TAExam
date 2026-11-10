@@ -95,7 +95,8 @@ without the cap returned 503 under the 200-request test.
 ## Frontend
 
 - **React 19** is used. The brief says "React 18 or newer", and the Arc UI components are written for React 19 types.
-- UI text is in **Bengali**, matching the brief's audience. API codes and statuses stay in English (`HELD`, ...).
+- UI text is in **Bengali**, matching the brief's audience. A light/dark switch is in the header (defaults to the
+  system setting, remembered per browser). API codes and statuses stay in English (`HELD`, ...).
 - **The UI runs on port 3000.** The backend URL is read at container start from `API_BASE_URL`, written into `/config.js`.
   Changing it needs a container restart, not a rebuild. CORS on the API allows any origin.
 - **Polling intervals:**
@@ -109,5 +110,5 @@ without the cap returned 503 under the 200-request test.
   - **Arc UI** (free tier), installed as source via the shadcn CLI so it can be localized.
   - **Border Beam** from libraries.dev (MIT), which highlights applications still waiting for payment.
 
-  Hard-coded English strings in the vendored Arc components (countdown units, usage meter captions) were translated
+  Hard-coded English strings in the vendored Arc components (countdown units, stepper status text) were translated
   to Bengali.

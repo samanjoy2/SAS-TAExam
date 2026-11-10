@@ -9,6 +9,7 @@ import { Alert } from './Alert'
 import { Badge, type BadgeTone } from './arc/badge/badge'
 import { Button } from './arc/button/button'
 import { Countdown } from './arc/countdown/countdown'
+import { Stepper, type StepperStep } from './arc/stepper/stepper'
 import { ConfirmMorph } from './arc/confirm-morph/confirm-morph'
 import { useToastStack } from './arc/toast-stack/toast-stack'
 
@@ -17,6 +18,21 @@ interface Props {
   /** Called after pay/cancel or when the countdown reaches zero, so the parent can refetch. */
   onChanged?: () => void
   showLink?: boolean
+}
+
+/** Progress of an application: applied -> fee paid -> admitted. Failed states mark the payment step. */
+function progress(status: HoldStatus): { steps: StepperStep[]; current: number } {
+  const steps: StepperStep[] = [
+    { id: 'apply', label: 'আবেদন', description: 'আসন সংরক্ষিত' },
+    {
+      id: 'pay',
+      label: 'ভর্তি ফি',
+      description: 'নির্ধারিত সময়ের মধ্যে',
+      error: status === 'EXPIRED' ? 'মেয়াদ শেষ' : status === 'CANCELLED' ? 'বাতিল করা হয়েছে' : undefined,
+    },
+    { id: 'done', label: 'ভর্তি নিশ্চিত', description: 'আসন আপনার' },
+  ]
+  return { steps, current: status === 'CONFIRMED' ? 3 : 1 }
 }
 
 const TONE: Record<HoldStatus, BadgeTone> = { HELD: 'warning', CONFIRMED: 'success', EXPIRED: 'neutral', CANCELLED: 'danger' }
@@ -86,6 +102,8 @@ export function HoldCard({ hold, onChanged, showLink }: Props) {
         </Badge>
       </header>
 
+      <Stepper {...progress(status)} details="current" label="আবেদনের অগ্রগতি" completeLabel="ভর্তি সম্পন্ন" className="hold-stepper" />
+
       {status === 'HELD' && (
         <div className="hold-timer" data-testid="countdown" data-seconds-left={left} title={formatDuration(left)}>
           <Countdown
@@ -116,6 +134,8 @@ export function HoldCard({ hold, onChanged, showLink }: Props) {
       )}
       {status === 'HELD' && !studentId && <Alert kind="info">ফি দিতে বা বাতিল করতে উপরে জন্মনিবন্ধন নম্বর দিন।</Alert>}
 
+      {/* Expired keeps the buttons visible but disabled (as required); finished states drop them. */}
+      {(status === 'HELD' || status === 'EXPIRED') && (
       <div className="actions">
         <Button variant="primary" onClick={pay} disabled={!canAct} loading={busy}>
           ভর্তি ফি দিন
@@ -133,6 +153,7 @@ export function HoldCard({ hold, onChanged, showLink }: Props) {
           onConfirm={cancel}
         />
       </div>
+      )}
 
       <Alert kind="error">{error}</Alert>
     </article>
