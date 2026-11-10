@@ -14,6 +14,13 @@ Where the brief was silent, these are the choices made and why.
 - **Class names are not unique.** Two classes may have the same name. Automated tests are likely to create
   "Class 6 - Morning Shift" many times against the same database, and rejecting duplicates would break them.
 - Classes cannot be edited or deleted. The brief asks only for creation.
+- **`POST /classes` accepts a JSON body whatever the `Content-Type` is, even if the header is missing.** Strict
+  content negotiation would turn a harmless client omission into a confusing error.
+- **Wrong HTTP methods return `405 METHOD_NOT_ALLOWED`, unknown paths `404 NOT_FOUND`.** Both use the same JSON error
+  shape as everything else.
+- **If the database is down when a backend starts, it waits** (retrying for about a minute) before accepting requests,
+  then serves normally. If the database goes down while the backend is running, requests get `503
+  DATABASE_UNAVAILABLE` and recover by themselves once it is back.
 
 ## Holds and admission rules
 

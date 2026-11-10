@@ -81,5 +81,16 @@ services:
       context: ./frontend
       target: test
 
+  # ---- load / stress test (k6). Start the stack first, ideally with `--profile multi`. ----
+  stress:
+    profiles: ["stress"]
+    image: grafana/k6:0.54.0
+    volumes:
+      - ./stress:/scripts:ro
+    environment:
+      BASE_URLS: "${STRESS_BASE_URLS:-http://backend:8080,http://backend-2:8080}"
+      DURATION: "${STRESS_DURATION:-60s}"
+    command: ["run", "/scripts/admission.js"]
+
 volumes:
   pgdata:

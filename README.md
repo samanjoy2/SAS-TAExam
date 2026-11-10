@@ -60,7 +60,7 @@ docker compose --profile test run --rm --build backend-tests
 docker compose --profile test run --rm --build frontend-tests
 ```
 
-**Backend** (`backend/tests`, xUnit, 22 tests against a real PostgreSQL). In Docker they use the compose `db` service
+**Backend** (`backend/tests`, xUnit, 30 tests against a real PostgreSQL). In Docker they use the compose `db` service
 with a separate `admission_test` database. Run locally with `dotnet test` from `backend/`, which starts a throwaway
 Postgres via Testcontainers (needs Docker), or set `TEST_DB_CONNECTION_STRING` to use your own server.
 
@@ -70,10 +70,55 @@ Postgres via Testcontainers (needs Docker), or set `TEST_DB_CONNECTION_STRING` t
 - `AdmissionRulesTests`: contract fields, validation (`400`), unknown class (`404`), full class (`409 SEATS_FULL`),
   duplicate/already-admitted, owner-only confirm/cancel (`403`), cancel frees the seat, automatic expiry frees the
   seat and blocks confirm, `/me/holds` only shows the caller's applications.
+- `RobustnessTests`: confirm and cancel racing on the same hold (exactly one wins), confirms fired across the expiry
+  deadline (never confirmed late), any/no `Content-Type` on `POST /classes`, JSON 404/405, Bengali names.
 
-**Frontend** (`frontend/src/**/*.test.ts(x)`, Vitest + Testing Library, 12 tests): countdown hitting zero flips the
-status to `EXPIRED` and disables pay with no reload, seat counts auto-refresh, server-down / seats-full errors show
-readable messages, student ID validation and persistence. Locally: `cd frontend && npm ci && npm test`.
+**Frontend** (`frontend/src/**/*.test.ts(x)`, Vitest + Testing Library, 24 tests):
+
+- countdown hitting zero flips the status to `EXPIRED` and disables pay with no reload;
+- seat counts auto-refresh, and polling catches up when a background tab is shown;
+- server-down / seats-full / expired errors show readable messages, and stale data stays visible on a failed refresh;
+- admin form validation and the exact request body;
+- pay and cancel (with confirmation) send the right requests;
+- class names render as text, not HTML;
+- student ID validation and persistence. Locally: `cd frontend && npm ci && npm test`.
+
+## Stress and edge-case testing
+
+Scripts live in `stress/`. Run them against the running stack, using short holds and both backends so expiry and
+multi-process contention are exercised:
+
+```bash
+HOLD_DURATION_SECONDS=8 docker compose --profile multi up -d --build
+```
+
+```bash
+docker compose --profile stress run --rm stress
+```
+
+```bash
+docker compose exec -T db psql -U admission -d admission -f - < stress/check-invariants.sql
+```
+
+```bash
+bash stress/edge-cases.sh http://localhost:8080
+```
+
+- `stress/admission.js` (k6, runs in a container) combines four scenarios:
+  - **burst:** 600 simultaneous applicants for one 50-seat class;
+  - **mixed:** ~250 users applying, confirming (and re-confirming via the other process), cancelling, abandoning, and
+    paying for someone else;
+  - **readers:** 40 parents polling the class list and their applications;
+  - **invariant:** a watcher that fails the run if `held + confirmed > total` is ever observed.
+
+  Thresholds fail the run on any 5xx, any unexpected status, or any invariant violation.
+- `stress/check-invariants.sql` checks the stored data afterwards: no class over capacity, no duplicate active holds,
+  no confirmation after its deadline, and the sweeper keeping up.
+- `stress/edge-cases.sh` runs 58 black-box probes covering validation, injection-looking IDs, header abuse, the
+  lifecycle, 404/405 and CORS.
+
+Typical result on a laptop: ~75k requests at ~750 req/s, p95 ≈ 5 ms, 0 errors, 0 invariant violations. Exactly 50 of
+the 600 burst applicants get a seat. The findings and fixes are listed in `AI_USAGE.md`.
 
 ## Bonus: two backend processes on one database
 
@@ -91,6 +136,7 @@ backend/
   src/SchoolAdmission.Api/     API (Program.cs, Endpoints.cs, Domain/AdmissionService.cs = all business rules)
   tests/SchoolAdmission.Tests/ xUnit integration + concurrency tests
   Dockerfile                   build / test / runtime stages
+stress/                        k6 load test, SQL invariant check, edge-case probes
 frontend/
   src/pages/                   Classes, Admin, Application, My applications
   src/components/              HoldCard, StudentBar, Alert + arc/ (Arc UI source)
